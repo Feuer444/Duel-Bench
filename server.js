@@ -16,6 +16,7 @@ const PRESETS = {
 };
 
 const LOWER_WINS = new Set(['reaction', 'aim', 'switch']);
+const MASCOTS = new Set(['blob', 'bean', 'boxy', 'puff', 'starlet', 'bot']);
 const METRIC_BOUNDS = {
   reaction: [70, 1500],
   aim: [70, 4000],
@@ -31,7 +32,7 @@ const METRIC_BOUNDS = {
 };
 
 const ROUND_TIMEOUT_MS = {
-  reaction: 12000,
+  reaction: 42000,
   aim: 45000,
   tracking: 14000,
   switch: 35000,
@@ -67,7 +68,10 @@ function publicState(room) {
       id: p.id,
       name: p.name,
       ready: p.ready,
-      wins: p.wins
+      wins: p.wins,
+      coins: p.coins || 0,
+      streak: p.streak || 0,
+      mascot: p.mascot || 'blob'
     })),
     round: room.round,
     inMatch: room.inMatch
@@ -128,8 +132,27 @@ function finishRoundIfReady(room) {
   clearRoundTimer(room);
 
   const outcome = roundWinner(room.currentMode, room.results);
+  const coinDelta = {};
+  for (const player of room.players.values()) coinDelta[player.id] = 0;
+
   if (outcome?.winnerId && room.players.has(outcome.winnerId)) {
-    room.players.get(outcome.winnerId).wins += 1;
+    const winner = room.players.get(outcome.winnerId);
+    const loser = [...room.players.values()].find(p => p.id !== outcome.winnerId);
+    winner.wins += 1;
+    winner.streak = (winner.streak || 0) + 1;
+    if (loser) loser.streak = 0;
+
+    const streakBonus = Math.min(75, Math.max(0, winner.streak - 1) * 25);
+    const winnerReward = 100 + streakBonus;
+    winner.coins = (winner.coins || 0) + winnerReward;
+    coinDelta[winner.id] = winnerReward;
+    if (loser) coinDelta[loser.id] = 0;
+  } else {
+    for (const player of room.players.values()) {
+      player.streak = 0;
+      player.coins = (player.coins || 0) + 50;
+      coinDelta[player.id] = 50;
+    }
   }
 
   const results = [...room.results.entries()].map(([id, value]) => ({ id, ...value }));
@@ -138,8 +161,9 @@ function finishRoundIfReady(room) {
     mode: room.currentMode,
     winnerId: outcome?.winnerId || null,
     tie: !!outcome?.tie,
+    coinDelta,
     results,
-    players: [...room.players.values()].map(p => ({ id: p.id, name: p.name, wins: p.wins }))
+    players: [...room.players.values()].map(p => ({ id: p.id, name: p.name, wins: p.wins, coins: p.coins || 0, streak: p.streak || 0, mascot: p.mascot || 'blob' }))
   });
 
   room.round += 1;
@@ -198,7 +222,7 @@ function finishMatch(room) {
 
   io.to(room.code).emit('matchEnd', {
     winnerId: winner?.id || null,
-    players: players.map(p => ({ id: p.id, name: p.name, wins: p.wins }))
+    players: players.map(p => ({ id: p.id, name: p.name, wins: p.wins, coins: p.coins || 0, streak: p.streak || 0, mascot: p.mascot || 'blob' }))
   });
 
   for (const p of room.players.values()) p.ready = false;
@@ -214,7 +238,7 @@ function maybeStart(room) {
   room.modes = shuffled(PRESETS[room.preset]);
   room.results = new Map();
   room.currentMode = null;
-  for (const p of players) p.wins = 0;
+  for (const p of players) { p.wins = 0; p.coins = 0; p.streak = 0; }
 
   io.to(room.code).emit('matchStart', { modes: room.modes, totalRounds: room.modes.length, preset: room.preset });
   setTimeout(() => startRound(room), 1000);
@@ -244,7 +268,7 @@ function leaveRoom(socket) {
 }
 
 io.on('connection', socket => {
-  socket.on('createRoom', ({ name, preset } = {}, ack = () => {}) => {
+  socket.on('createRoom', ({ name, preset, mascot } = {}, ack = () => {}) => {
     leaveRoom(socket);
     const code = roomCode();
     const chosenPreset = PRESETS[preset] ? preset : 'full';
@@ -261,7 +285,7 @@ io.on('connection', socket => {
       currentSeed: null,
       roundTimer: null
     };
-    room.players.set(socket.id, { id: socket.id, name: String(name || 'Player 1').slice(0, 18), ready: false, wins: 0 });
+    room.players.set(socket.id, { id: socket.id, name: String(name || 'Player 1').slice(0, 18), mascot: MASCOTS.has(mascot) ? mascot : 'blob', ready: false, wins: 0, coins: 0, streak: 0 });
     rooms.set(code, room);
     socket.join(code);
     socket.data.roomCode = code;
@@ -269,7 +293,7 @@ io.on('connection', socket => {
     io.to(code).emit('roomState', publicState(room));
   });
 
-  socket.on('joinRoom', ({ code, name } = {}, ack = () => {}) => {
+  socket.on('joinRoom', ({ code, name, mascot } = {}, ack = () => {}) => {
     leaveRoom(socket);
     const normalized = String(code || '').trim().toUpperCase();
     const room = rooms.get(normalized);
@@ -277,7 +301,7 @@ io.on('connection', socket => {
     if (room.players.size >= 2) return ack({ ok: false, error: 'Room is full.' });
     if (room.inMatch) return ack({ ok: false, error: 'Match already started.' });
 
-    room.players.set(socket.id, { id: socket.id, name: String(name || 'Player 2').slice(0, 18), ready: false, wins: 0 });
+    room.players.set(socket.id, { id: socket.id, name: String(name || 'Player 2').slice(0, 18), mascot: MASCOTS.has(mascot) ? mascot : 'blob', ready: false, wins: 0, coins: 0, streak: 0 });
     socket.join(normalized);
     socket.data.roomCode = normalized;
     ack({ ok: true, code: normalized, id: socket.id });

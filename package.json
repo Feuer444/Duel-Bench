@@ -1,8 +1,8 @@
 {
   "name": "gamer-benchmark-1v1",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Real-time 1v1 gamer benchmark with 11 reaction, aim, memory, typing, tracking, reflex, and speed tests.",
+  "description": "Real-time 1v1 party benchmark with 11 skill tests, selectable mascots, animated reactions, coins and streaks.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

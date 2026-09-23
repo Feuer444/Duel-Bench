@@ -3,24 +3,36 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DUEL//BENCH — 1v1 Gamer Skillcheck</title>
-  <meta name="description" content="Challenge a friend to an 11-test 1v1 gamer benchmark: reaction, aim, memory, typing, tracking and more." />
+  <title>Duel Bench — Party Skill Battle</title>
+  <meta name="description" content="Challenge a friend to an 11-test 1v1 gamer benchmark with mascots, coins and party-game reactions." />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
+  <div class="bg-doodles" aria-hidden="true"><span>★</span><span>●</span><span>▲</span><span>✦</span><span>■</span></div>
   <main class="shell">
     <header class="topbar">
-      <div class="brand">DUEL<span>//</span>BENCH</div>
-      <div class="tag">1v1 GAMER SKILLCHECK</div>
+      <div class="brand"><span class="brand-dot"></span>DUEL BENCH</div>
+      <div class="tag">PARTY SKILL BATTLE</div>
     </header>
 
     <section id="home" class="panel hero">
-      <p class="eyebrow">REACTION · AIM · MEMORY · TYPING · TRACKING · SPEED</p>
-      <h1>Eleven tests. <span>One winner.</span></h1>
-      <p class="sub">A real-time 1v1 benchmark for friends. Same challenges, same seeds, instant round results.</p>
+      <div class="hero-kicker">1V1 · REAL TIME · PURE SKILL</div>
+      <h1>Beat your friend at <span>everything.</span></h1>
+      <p class="sub">Reaction, aim, memory, typing and gamer mechanics — wrapped in a tiny competitive party game.</p>
 
       <div class="feature-row" aria-label="available match formats">
         <span>ULTIMATE 11</span><span>HUMAN 8</span><span>GAMER 5</span>
+      </div>
+
+      <div class="fighter-select">
+        <div class="fighter-heading">
+          <div>
+            <p class="eyebrow">CHOOSE YOUR LITTLE GUY</p>
+            <strong id="selectedMascotName">BLOB</strong>
+          </div>
+          <span class="fighter-note">They'll celebrate, panic and flex for you.</span>
+        </div>
+        <div id="mascotPicker" class="mascot-picker" aria-label="Choose mascot"></div>
       </div>
 
       <div class="card-grid">
@@ -38,7 +50,7 @@
       <p id="homeError" class="error"></p>
     </section>
 
-    <section id="lobby" class="panel hidden">
+    <section id="lobby" class="panel hidden lobby-panel">
       <div class="section-head">
         <div>
           <p class="eyebrow">PRIVATE DUEL</p>
@@ -63,22 +75,52 @@
       </div>
 
       <div id="players" class="players"></div>
-      <button id="readyBtn" class="primary wide">READY UP</button>
+      <button id="readyBtn" class="primary wide ready-button">READY UP</button>
       <p class="hint">Both players ready = the duel starts automatically.</p>
     </section>
 
     <section id="game" class="panel game-panel hidden">
       <div class="scorebar">
-        <div id="scoreP1" class="score-player">P1 <b>0</b></div>
+        <div id="scoreP1" class="score-player">YOU <b>0</b></div>
         <div id="roundLabel" class="round-label">ROUND 1/11</div>
-        <div id="scoreP2" class="score-player right">P2 <b>0</b></div>
+        <div id="scoreP2" class="score-player right">RIVAL <b>0</b></div>
       </div>
-      <div id="gameStage" class="stage"></div>
+
+      <div class="battle-layout">
+        <aside id="playerSide" class="fighter-side player-side">
+          <div class="side-name" id="sideNameP1">YOU</div>
+          <div id="mascotP1" class="mascot-stage"></div>
+          <div id="bubbleP1" class="speech-bubble hidden"></div>
+          <div class="side-stats">
+            <div class="star-score"><span>★</span><b id="starsP1">0</b></div>
+            <div class="coin-score"><span class="coin-icon">●</span><b id="coinsP1">0</b></div>
+          </div>
+          <div id="coinStackP1" class="coin-stack" aria-label="your coin pile"></div>
+          <div id="streakP1" class="streak-label"></div>
+        </aside>
+
+        <div class="arena-wrap">
+          <div id="gameStage" class="stage"></div>
+        </div>
+
+        <aside id="rivalSide" class="fighter-side rival-side">
+          <div class="side-name" id="sideNameP2">RIVAL</div>
+          <div id="mascotP2" class="mascot-stage"></div>
+          <div id="bubbleP2" class="speech-bubble hidden"></div>
+          <div class="side-stats">
+            <div class="star-score"><span>★</span><b id="starsP2">0</b></div>
+            <div class="coin-score"><span class="coin-icon">●</span><b id="coinsP2">0</b></div>
+          </div>
+          <div id="coinStackP2" class="coin-stack" aria-label="rival coin pile"></div>
+          <div id="streakP2" class="streak-label"></div>
+        </aside>
+      </div>
     </section>
 
     <section id="results" class="panel hidden result-panel">
       <p class="eyebrow">MATCH COMPLETE</p>
       <h2 id="winnerText">Winner</h2>
+      <div id="finalMascots" class="final-mascots"></div>
       <div id="finalScore" class="final-score"></div>
       <button id="rematchBtn" class="primary wide">REMATCH</button>
     </section>

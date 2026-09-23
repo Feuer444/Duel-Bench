@@ -9,6 +9,7 @@ const state = {
   players: [],
   ownerId: null,
   preset: 'full',
+  mascot: 'blob',
   mode: null,
   seed: null,
   round: 0,
@@ -16,7 +17,7 @@ const state = {
 };
 
 const modeInfo = {
-  reaction: { title: 'REACTION', icon: '⚡', text: 'Wait for green, then click instantly. A false start is heavily penalized.' },
+  reaction: { title: 'REACTION', icon: '⚡', text: 'Five reaction attempts. Your average time decides the round.' },
   sequence: { title: 'SEQUENCE MEMORY', icon: '▦', text: 'Watch the tiles light up, then repeat the sequence. It grows every level.' },
   aim: { title: 'AIM TRAINER', icon: '⊕', text: 'Hit 30 targets as quickly as possible. Miss-clicks add a small penalty.' },
   number: { title: 'NUMBER MEMORY', icon: '123', text: 'Memorize the number before it disappears. Each successful level adds another digit.' },
@@ -29,10 +30,14 @@ const modeInfo = {
   burst: { title: 'CLICK BURST', icon: '↯', text: 'Click as fast as you can for 5 seconds. Highest clicks per second wins.' }
 };
 
-const presetNames = {
-  full: 'ULTIMATE 11',
-  human: 'HUMAN 8',
-  gamer: 'GAMER 5'
+const presetNames = { full: 'ULTIMATE 11', human: 'HUMAN 8', gamer: 'GAMER 5' };
+const mascots = {
+  blob:    { name: 'BLOB', color: '#73a7ff' },
+  bean:    { name: 'BEAN', color: '#ff786f' },
+  boxy:    { name: 'BOXY', color: '#b7ef4a' },
+  puff:    { name: 'PUFF', color: '#c997ff' },
+  starlet: { name: 'STAR', color: '#ffd452' },
+  bot:     { name: 'BOT', color: '#62d8cc' }
 };
 
 function show(id) {
@@ -74,6 +79,36 @@ function formatMetric(mode, metric) {
   return `${Math.round(metric)} ms`;
 }
 
+function escapeHtml(value) {
+  return String(value).replace(/[&<>'"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[c]));
+}
+
+function mascotMarkup(type = 'blob') {
+  const safe = mascots[type] ? type : 'blob';
+  const color = mascots[safe].color;
+  return `<div class="mascot ${safe}" style="--m:${color}">
+    <div class="mascot-shadow"></div>
+    <div class="mascot-arm left"></div><div class="mascot-arm right"></div>
+    <div class="mascot-leg left"></div><div class="mascot-leg right"></div>
+    <div class="mascot-body"></div>
+    <div class="mascot-eye left"></div><div class="mascot-eye right"></div>
+    <div class="mascot-mouth"></div>
+  </div>`;
+}
+
+function buildMascotPicker() {
+  el('mascotPicker').innerHTML = Object.entries(mascots).map(([id, m]) => `
+    <button class="mascot-option ${id === state.mascot ? 'active' : ''}" data-mascot="${id}" aria-label="Choose ${m.name}">
+      ${mascotMarkup(id)}<span class="pick-name">${m.name}</span>
+    </button>`).join('');
+  el('selectedMascotName').textContent = mascots[state.mascot].name;
+  el('mascotPicker').querySelectorAll('.mascot-option').forEach(btn => btn.onclick = () => {
+    state.mascot = btn.dataset.mascot;
+    el('mascotPicker').querySelectorAll('.mascot-option').forEach(b => b.classList.toggle('active', b === btn));
+    el('selectedMascotName').textContent = mascots[state.mascot].name;
+  });
+}
+
 function toast(text) {
   const t = document.createElement('div');
   t.className = 'toast';
@@ -82,17 +117,130 @@ function toast(text) {
   setTimeout(() => t.remove(), 1400);
 }
 
+function renderCoinStack(targetId, coins = 0) {
+  const stack = el(targetId);
+  if (!stack) return;
+  const count = Math.min(10, Math.floor(coins / 50));
+  stack.innerHTML = Array.from({ length: count }, (_, i) => `<span class="stack-coin" style="--b:${6 + i * 9}px;--r:${i % 2 ? 3 : -3}deg"></span>`).join('');
+}
+
+function updateBattleUI(players = state.players) {
+  if (!players.length || !state.id) return;
+  const me = players.find(p => p.id === state.id) || players[0];
+  const other = players.find(p => p.id !== me.id);
+  if (!me) return;
+
+  el('sideNameP1').textContent = me.name || 'YOU';
+  el('sideNameP2').textContent = other?.name || 'RIVAL';
+  el('starsP1').textContent = me.wins || 0;
+  el('starsP2').textContent = other?.wins || 0;
+  el('coinsP1').textContent = me.coins || 0;
+  el('coinsP2').textContent = other?.coins || 0;
+  el('streakP1').textContent = (me.streak || 0) >= 2 ? `🔥 ${me.streak} WIN STREAK` : '';
+  el('streakP2').textContent = (other?.streak || 0) >= 2 ? `🔥 ${other.streak} WIN STREAK` : '';
+
+  const meType = me.mascot || 'blob';
+  const otherType = other?.mascot || 'bean';
+  if (el('mascotP1').dataset.type !== meType) {
+    el('mascotP1').dataset.type = meType;
+    el('mascotP1').innerHTML = mascotMarkup(meType);
+  }
+  if (el('mascotP2').dataset.type !== otherType) {
+    el('mascotP2').dataset.type = otherType;
+    el('mascotP2').innerHTML = mascotMarkup(otherType);
+  }
+  renderCoinStack('coinStackP1', me.coins || 0);
+  renderCoinStack('coinStackP2', other?.coins || 0);
+}
+
 function updateScore(players = state.players) {
   state.players = players;
   if (!players.length) return;
   const me = players.find(p => p.id === state.id) || players[0];
   const other = players.find(p => p.id !== me.id);
-  el('scoreP1').innerHTML = `${escapeHtml(me?.name || 'YOU')} <b>${me?.wins || 0}</b>`;
-  el('scoreP2').innerHTML = `${escapeHtml(other?.name || 'RIVAL')} <b>${other?.wins || 0}</b>`;
+  el('scoreP1').innerHTML = `${escapeHtml(me?.name || 'YOU')} <b>★ ${me?.wins || 0}</b>`;
+  el('scoreP2').innerHTML = `${escapeHtml(other?.name || 'RIVAL')} <b>★ ${other?.wins || 0}</b>`;
+  updateBattleUI(players);
 }
 
-function escapeHtml(value) {
-  return String(value).replace(/[&<>'"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[c]));
+function say(side, text, duration = 1450) {
+  const bubble = el(side === 'me' ? 'bubbleP1' : 'bubbleP2');
+  if (!bubble) return;
+  bubble.textContent = text;
+  bubble.classList.remove('hidden');
+  clearTimeout(bubble._timer);
+  bubble._timer = setTimeout(() => bubble.classList.add('hidden'), duration);
+}
+
+function reactMascot(side, mood, phrase = '') {
+  const holder = el(side === 'me' ? 'mascotP1' : 'mascotP2');
+  const mascot = holder?.querySelector('.mascot');
+  if (!mascot) return;
+  mascot.classList.remove('react-win', 'react-hype', 'react-lose', 'react-panic', 'react-wait');
+  void mascot.offsetWidth;
+  mascot.classList.add(`react-${mood}`);
+  if (phrase) say(side, phrase);
+  if (!['wait'].includes(mood)) setTimeout(() => mascot.classList.remove(`react-${mood}`), 1750);
+}
+
+function rewardBurst(side, amount, winner = false) {
+  const holder = el(side === 'me' ? 'playerSide' : 'rivalSide');
+  if (!holder) return;
+  const pieces = winner ? 10 : 4;
+  for (let i = 0; i < pieces; i++) {
+    const c = document.createElement('span');
+    c.className = 'coin-particle';
+    c.style.left = `${35 + Math.random() * 45}%`;
+    c.style.top = `${35 + Math.random() * 15}%`;
+    c.style.setProperty('--sx', `${(Math.random() - .5) * 35}px`);
+    c.style.setProperty('--sy', `${-30 - Math.random() * 80}px`);
+    c.style.setProperty('--ex', `${(Math.random() - .5) * 70}px`);
+    c.style.setProperty('--ey', `${120 + Math.random() * 150}px`);
+    c.style.animationDelay = `${i * 35}ms`;
+    holder.appendChild(c);
+    setTimeout(() => c.remove(), 1200);
+  }
+  if (winner) confetti(holder);
+  if (amount > 0) say(side, `+${amount} COINS!`, 1650);
+}
+
+function confetti(holder) {
+  const colors = ['#ffd452', '#b7ef4a', '#73a7ff', '#ff786f', '#c997ff'];
+  for (let i = 0; i < 18; i++) {
+    const p = document.createElement('span');
+    p.className = 'confetti';
+    p.style.left = `${10 + Math.random() * 80}%`;
+    p.style.top = '0';
+    p.style.setProperty('--c', colors[i % colors.length]);
+    p.style.setProperty('--x', `${(Math.random() - .5) * 15}px`);
+    p.style.setProperty('--drift', `${(Math.random() - .5) * 90}px`);
+    p.style.animationDelay = `${Math.random() * 150}ms`;
+    holder.appendChild(p);
+    setTimeout(() => p.remove(), 1400);
+  }
+}
+
+function strongPerformance(mode, metric) {
+  const tests = {
+    reaction: metric < 205,
+    aim: metric < 330,
+    tracking: metric > 86,
+    switch: metric < 360,
+    burst: metric > 8.5,
+    typing: metric > 75,
+    sequence: metric >= 7,
+    number: metric >= 8,
+    verbal: metric >= 24,
+    chimp: metric >= 8,
+    visual: metric >= 8
+  };
+  return !!tests[mode];
+}
+
+function reactionDetails(result) {
+  const attempts = result?.details?.attempts;
+  if (!Array.isArray(attempts)) return '';
+  return `<div class="reaction-breakdown">${attempts.map(v => `<span>${Math.round(v)}ms</span>`).join('')}</div>`;
 }
 
 function renderLobby(room) {
@@ -103,14 +251,17 @@ function renderLobby(room) {
   el('copyCode').textContent = room.code;
   el('players').innerHTML = room.players.map(p => `
     <div class="player">
-      <div class="name">${escapeHtml(p.name)} ${p.id === state.id ? '<span class="you-tag">YOU</span>' : ''} ${p.id === room.ownerId ? '<span class="host-tag">HOST</span>' : ''}</div>
-      <div class="status ${p.ready ? 'ready' : ''}">${p.ready ? 'READY' : 'NOT READY'}</div>
+      <div class="lobby-avatar">${mascotMarkup(p.mascot)}</div>
+      <div>
+        <div class="name">${escapeHtml(p.name)} ${p.id === state.id ? '<span class="you-tag">YOU</span>' : ''} ${p.id === room.ownerId ? '<span class="host-tag">HOST</span>' : ''}</div>
+        <div class="status ${p.ready ? 'ready' : ''}">${p.ready ? 'READY TO THROW HANDS' : 'NOT READY'}</div>
+      </div>
     </div>`).join('') + (room.players.length < 2 ? `
-      <div class="player"><div class="name waiting-name">Waiting for rival…</div><div class="status">Share room code ${room.code}</div></div>` : '');
+      <div class="player"><div class="lobby-avatar"></div><div><div class="name waiting-name">Waiting for rival…</div><div class="status">Share room code ${room.code}</div></div></div>` : '');
 
   const me = room.players.find(p => p.id === state.id);
   state.ready = !!me?.ready;
-  el('readyBtn').textContent = state.ready ? 'UNREADY' : 'READY UP';
+  el('readyBtn').textContent = state.ready ? 'I CHANGED MY MIND' : 'READY UP';
   el('presetLabel').textContent = `${presetNames[room.preset]} · ${room.totalRounds} ROUNDS`;
 
   const isHost = room.ownerId === state.id;
@@ -122,9 +273,11 @@ function renderLobby(room) {
   show('lobby');
 }
 
+buildMascotPicker();
+
 el('createBtn').onclick = () => {
   el('homeError').textContent = '';
-  socket.emit('createRoom', { name: name(), preset: 'full' }, res => {
+  socket.emit('createRoom', { name: name(), preset: 'full', mascot: state.mascot }, res => {
     if (!res.ok) return el('homeError').textContent = res.error || 'Could not create room.';
     state.id = res.id;
     state.code = res.code;
@@ -133,7 +286,7 @@ el('createBtn').onclick = () => {
 
 el('joinBtn').onclick = () => {
   el('homeError').textContent = '';
-  socket.emit('joinRoom', { code: el('codeInput').value, name: name() }, res => {
+  socket.emit('joinRoom', { code: el('codeInput').value, name: name(), mascot: state.mascot }, res => {
     if (!res.ok) return el('homeError').textContent = res.error || 'Could not join room.';
     state.id = res.id;
     state.code = res.code;
@@ -154,8 +307,10 @@ socket.on('roomState', renderLobby);
 
 socket.on('matchStart', data => {
   show('game');
-  updateScore(state.players.map(p => ({ ...p, wins: 0 })));
+  updateScore(state.players.map(p => ({ ...p, wins: 0, coins: 0, streak: 0 })));
   el('roundLabel').textContent = `ROUND 1/${data.totalRounds}`;
+  reactMascot('me', 'hype', 'LET\'S GO!');
+  reactMascot('rival', 'hype', 'BRING IT!');
 });
 
 socket.on('roundIntro', data => {
@@ -164,6 +319,8 @@ socket.on('roundIntro', data => {
   state.round = data.round;
   el('roundLabel').textContent = `ROUND ${data.round}/${data.totalRounds}`;
   const m = modeInfo[data.mode];
+  reactMascot('me', 'wait');
+  reactMascot('rival', 'wait');
   setStage(`
     <div class="intro">
       <div class="mode-icon">${m.icon}</div>
@@ -174,6 +331,8 @@ socket.on('roundIntro', data => {
 });
 
 socket.on('roundStart', data => {
+  el('bubbleP1').classList.add('hidden');
+  el('bubbleP2').classList.add('hidden');
   const players = {
     reaction: playReaction,
     sequence: playSequence,
@@ -193,7 +352,7 @@ socket.on('roundStart', data => {
 socket.on('roundProgress', data => {
   if (data.finished === 1) {
     const waiting = el('gameStage').querySelector('.waiting-copy');
-    if (waiting) waiting.textContent = 'Done. Waiting for rival…';
+    if (waiting) waiting.textContent = 'Locked in. Your rival is sweating…';
   }
 });
 
@@ -202,14 +361,32 @@ socket.on('roundEnd', data => {
   const mine = data.results.find(r => r.id === state.id);
   const other = data.results.find(r => r.id !== state.id);
   const iWon = data.winnerId === state.id;
-  const title = data.tie ? 'DRAW' : iWon ? 'ROUND WON' : 'ROUND LOST';
+  const otherWon = !!data.winnerId && !iWon;
+  const myReward = data.coinDelta?.[state.id] || 0;
+  const otherReward = other ? (data.coinDelta?.[other.id] || 0) : 0;
+  const title = data.tie ? 'DRAW!' : iWon ? 'ROUND WON!' : 'ROUND LOST';
+
+  if (data.tie) {
+    reactMascot('me', 'panic', 'SO CLOSE!');
+    reactMascot('rival', 'panic', 'NO WAY!');
+  } else if (iWon) {
+    reactMascot('me', strongPerformance(data.mode, mine.metric) ? 'hype' : 'win', strongPerformance(data.mode, mine.metric) ? 'CLEAN!' : 'YES!');
+    reactMascot('rival', 'lose', 'OOF...');
+  } else {
+    reactMascot('me', mine?.details?.falseStart || mine?.details?.falseStarts ? 'panic' : 'lose', 'NOOO!');
+    reactMascot('rival', strongPerformance(data.mode, other.metric) ? 'hype' : 'win', strongPerformance(data.mode, other.metric) ? 'SHEESH!' : 'NICE!');
+  }
+  rewardBurst('me', myReward, iWon);
+  rewardBurst('rival', otherReward, otherWon);
+
   setStage(`
     <div class="result-card">
       <p class="eyebrow">${modeInfo[data.mode].title}</p>
-      <h3>${title}</h3>
+      <h3 class="${iWon ? 'won' : (!data.tie ? 'lost' : '')}">${title}</h3>
+      <div class="reward-line"><span class="coin-icon"></span> ${myReward} COINS THIS ROUND</div>
       <div class="duel-results">
-        <div class="duel-stat ${iWon ? 'win' : ''}"><div>YOU</div><div class="metric">${formatMetric(data.mode, mine.metric)}</div></div>
-        <div class="duel-stat ${!data.tie && !iWon ? 'win' : ''}"><div>RIVAL</div><div class="metric">${formatMetric(data.mode, other.metric)}</div></div>
+        <div class="duel-stat ${iWon ? 'win' : ''}"><div>YOU</div><div class="metric">${formatMetric(data.mode, mine.metric)}</div>${data.mode === 'reaction' ? reactionDetails(mine) : ''}</div>
+        <div class="duel-stat ${otherWon ? 'win' : ''}"><div>RIVAL</div><div class="metric">${formatMetric(data.mode, other.metric)}</div>${data.mode === 'reaction' ? reactionDetails(other) : ''}</div>
       </div>
     </div>`);
 });
@@ -218,8 +395,9 @@ socket.on('matchEnd', data => {
   state.players = data.players;
   show('results');
   const winner = data.players.find(p => p.id === data.winnerId);
-  el('winnerText').textContent = data.winnerId ? (data.winnerId === state.id ? 'YOU WIN.' : `${winner.name} WINS.`) : 'DRAW.';
-  el('finalScore').innerHTML = data.players.map(p => `<div class="final-pill">${escapeHtml(p.name)}<strong>${p.wins}</strong> rounds</div>`).join('');
+  el('winnerText').textContent = data.winnerId ? (data.winnerId === state.id ? 'YOU WIN!' : `${winner.name} WINS!`) : 'DRAW!';
+  el('finalMascots').innerHTML = data.players.map(p => `<div class="final-fighter ${p.id === data.winnerId ? 'winner' : ''}">${mascotMarkup(p.mascot)}<div class="final-name">${escapeHtml(p.name)}</div></div>`).join('');
+  el('finalScore').innerHTML = data.players.map(p => `<div class="final-pill">${escapeHtml(p.name)}<strong>★ ${p.wins}</strong><small>${p.coins || 0} coins collected</small></div>`).join('');
 });
 
 socket.on('opponentLeft', () => {
@@ -229,6 +407,7 @@ socket.on('opponentLeft', () => {
 
 function submit(metric, details = {}) {
   socket.emit('roundResult', { mode: state.mode, seed: state.seed, metric, details });
+  reactMascot('me', 'wait');
   setStage(`<div class="center-copy"><div><div class="big-number good metric-lock">${formatMetric(state.mode, metric)}</div><div class="small-copy waiting-copy">Score locked in…</div></div></div>`);
 }
 
@@ -238,28 +417,78 @@ function submit(metric, details = {}) {
 
 function playReaction(seed) {
   const rand = seeded(seed);
-  const delay = 1700 + Math.floor(rand() * 2800);
+  const totalAttempts = 5;
+  const delays = Array.from({ length: totalAttempts }, () => 1500 + Math.floor(rand() * 1600));
+  const attempts = [];
+  let index = 0;
+  let timer = null;
+  let nextTimer = null;
+  let field = null;
   let greenAt = 0;
-  let done = false;
-  setStage(`<div class="playfield reaction-field" id="reactionField"><div class="center-copy"><div><div class="big-number">WAIT</div><div class="small-copy">Click when the screen turns green.</div></div></div></div>`);
-  const field = el('reactionField');
-  const timer = setTimeout(() => {
-    if (done) return;
-    greenAt = performance.now();
-    field.classList.add('go');
-    field.querySelector('.big-number').textContent = 'CLICK';
-    field.querySelector('.big-number').classList.add('good');
-  }, delay);
+  let attemptDone = false;
 
-  const click = () => {
-    if (done) return;
-    done = true;
-    clearTimeout(timer);
-    if (!greenAt) submit(1000, { falseStart: true });
-    else submit(performance.now() - greenAt);
+  const chips = () => Array.from({ length: totalAttempts }, (_, i) => {
+    if (i < attempts.length) {
+      const falseStart = attempts[i] >= 999;
+      return `<span class="reaction-chip done ${falseStart ? 'false' : ''}">${falseStart ? 'EARLY' : Math.round(attempts[i]) + 'ms'}</span>`;
+    }
+    return `<span class="reaction-chip">${i === index ? 'NOW' : '—'}</span>`;
+  }).join('');
+
+  const startAttempt = () => {
+    greenAt = 0;
+    attemptDone = false;
+    setStage(`<div class="playfield reaction-field" id="reactionField">
+      <div class="reaction-counter">ATTEMPT ${index + 1} / ${totalAttempts}</div>
+      <div class="center-copy"><div><div class="big-number">WAIT</div><div class="small-copy">Click when it turns green.</div></div></div>
+      <div class="reaction-attempts">${chips()}</div>
+    </div>`);
+    field = el('reactionField');
+
+    const onClick = () => {
+      if (attemptDone) return;
+      attemptDone = true;
+      clearTimeout(timer);
+      field.removeEventListener('pointerdown', onClick);
+      const falseStart = !greenAt;
+      const value = falseStart ? 1000 : performance.now() - greenAt;
+      attempts.push(value);
+      field.classList.remove('go');
+      const big = field.querySelector('.big-number');
+      big.textContent = falseStart ? 'TOO SOON' : `${Math.round(value)} ms`;
+      big.className = `big-number ${falseStart ? 'bad' : 'good'}`;
+      field.querySelector('.small-copy').textContent = falseStart ? '+1000ms penalty for this attempt' : 'Nice. Get ready again…';
+      field.querySelector('.reaction-attempts').innerHTML = chips();
+
+      nextTimer = setTimeout(() => {
+        if (index + 1 >= totalAttempts) {
+          const average = attempts.reduce((a, b) => a + b, 0) / attempts.length;
+          submit(average, { attempts, falseStarts: attempts.filter(v => v >= 999).length });
+        } else {
+          index++;
+          startAttempt();
+        }
+      }, falseStart ? 900 : 650);
+    };
+
+    field.addEventListener('pointerdown', onClick);
+    timer = setTimeout(() => {
+      if (attemptDone) return;
+      greenAt = performance.now();
+      field.classList.add('go');
+      const big = field.querySelector('.big-number');
+      big.textContent = 'CLICK!';
+      big.classList.add('good');
+    }, delays[index]);
+
+    state.cleanup = () => {
+      clearTimeout(timer);
+      clearTimeout(nextTimer);
+      field?.removeEventListener('pointerdown', onClick);
+    };
   };
-  field.addEventListener('pointerdown', click);
-  state.cleanup = () => { clearTimeout(timer); field.removeEventListener('pointerdown', click); };
+
+  startAttempt();
 }
 
 function playSequence(seed) {
