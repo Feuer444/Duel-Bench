@@ -5,14 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Duel Bench — Party Skill Battle</title>
   <meta name="description" content="Challenge a friend to an 11-test 1v1 gamer benchmark with mascots, coins and party-game reactions." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <div class="bg-doodles" aria-hidden="true"><span>★</span><span>●</span><span>▲</span><span>✦</span><span>■</span></div>
   <main class="shell">
     <header class="topbar">
-      <div class="brand"><span class="brand-dot"></span>DUEL BENCH</div>
-      <div class="tag">PARTY SKILL BATTLE</div>
+      <div class="brand-wrap">
+        <div class="brand">
+          <span class="brand-mark"><span class="brand-face"></span></span>
+          <div>
+            <div class="brand-main">DUEL BENCH</div>
+            <div class="brand-sub">party duel arcade</div>
+          </div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div class="tag">PARTY SKILL BATTLE</div>
+        <button id="soundBtn" class="sound-toggle" type="button">🔊 SOUND ON</button>
+      </div>
     </header>
 
     <section id="home" class="panel hero">
@@ -28,9 +42,10 @@
         <div class="fighter-heading">
           <div>
             <p class="eyebrow">CHOOSE YOUR LITTLE GUY</p>
-            <strong id="selectedMascotName">BLOB</strong>
+            <strong id="selectedMascotName">BOP</strong>
+            <p id="selectedMascotBlurb" class="fighter-blurb">The upbeat all-rounder. Big grin, tiny brain, huge confidence.</p>
           </div>
-          <span class="fighter-note">They'll celebrate, panic and flex for you.</span>
+          <span class="fighter-note">Pick the goofball that feels the most like you.</span>
         </div>
         <div id="mascotPicker" class="mascot-picker" aria-label="Choose mascot"></div>
       </div>

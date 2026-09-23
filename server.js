@@ -37,11 +37,11 @@ const ROUND_TIMEOUT_MS = {
   tracking: 14000,
   switch: 35000,
   burst: 11000,
-  sequence: 85000,
-  number: 90000,
+  sequence: 100000,
+  number: 105000,
   verbal: 75000,
   chimp: 90000,
-  visual: 90000,
+  visual: 105000,
   typing: 42000
 };
 

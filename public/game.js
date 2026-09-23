@@ -32,13 +32,64 @@ const modeInfo = {
 
 const presetNames = { full: 'ULTIMATE 11', human: 'HUMAN 8', gamer: 'GAMER 5' };
 const mascots = {
-  blob:    { name: 'BLOB', color: '#73a7ff' },
-  bean:    { name: 'BEAN', color: '#ff786f' },
-  boxy:    { name: 'BOXY', color: '#b7ef4a' },
-  puff:    { name: 'PUFF', color: '#c997ff' },
-  starlet: { name: 'STAR', color: '#ffd452' },
-  bot:     { name: 'BOT', color: '#62d8cc' }
+  blob:    { name: 'BOP', color: '#76a9ff', blurb: 'The upbeat all-rounder. Big grin, tiny brain, huge confidence.' },
+  bean:    { name: 'NIB', color: '#ff8478', blurb: 'The sleepy smirker. Cool bangs, side-eye, accidental genius.' },
+  boxy:    { name: 'BRIX', color: '#b7ef4a', blurb: 'The tryhard cube. Sharp buzz cut, sharper stare.' },
+  puff:    { name: 'MOCHI', color: '#cf9dff', blurb: 'The fluffy chaos goblin. Cute until the click burst starts.' },
+  starlet: { name: 'NOVA', color: '#ffd452', blurb: 'The sparkle gremlin. Main-character energy at all times.' },
+  bot:     { name: 'BYTE', color: '#62d8cc', blurb: 'The tiny machine. Deadpan face, perfect posture, suspiciously locked in.' }
 };
+
+const soundState = { muted: false, ctx: null, unlocked: false };
+
+function initAudio() {
+  if (soundState.ctx || typeof window.AudioContext === 'undefined' && typeof window.webkitAudioContext === 'undefined') return;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  soundState.ctx = new Ctx();
+}
+
+function ensureAudio() {
+  initAudio();
+  const ctx = soundState.ctx;
+  if (!ctx) return null;
+  if (ctx.state === 'suspended') ctx.resume();
+  soundState.unlocked = true;
+  return ctx;
+}
+
+function beep(freq = 440, duration = 0.08, type = 'square', gain = 0.028, when = 0) {
+  const ctx = ensureAudio();
+  if (!ctx || soundState.muted) return;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, ctx.currentTime + when);
+  g.gain.setValueAtTime(0.0001, ctx.currentTime + when);
+  g.gain.exponentialRampToValueAtTime(gain, ctx.currentTime + when + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + when + duration);
+  o.connect(g).connect(ctx.destination);
+  o.start(ctx.currentTime + when);
+  o.stop(ctx.currentTime + when + duration + 0.02);
+}
+
+function sfx(name) {
+  const play = {
+    click() { beep(640, 0.04, 'square', 0.018); },
+    soft() { beep(520, 0.03, 'triangle', 0.014); },
+    reveal() { beep(540, 0.05, 'triangle', 0.016); beep(760, 0.06, 'triangle', 0.014, 0.04); },
+    target() { beep(420, 0.03, 'square', 0.022); beep(780, 0.07, 'triangle', 0.02, 0.025); },
+    coin() { beep(860, 0.05, 'triangle', 0.022); beep(1160, 0.07, 'triangle', 0.02, 0.05); },
+    success() { beep(560, 0.06, 'triangle', 0.018); beep(720, 0.06, 'triangle', 0.018, 0.06); beep(980, 0.08, 'triangle', 0.02, 0.12); },
+    win() { beep(520, 0.07, 'square', 0.02); beep(700, 0.07, 'square', 0.02, 0.08); beep(940, 0.1, 'triangle', 0.024, 0.16); },
+    lose() { beep(400, 0.08, 'sawtooth', 0.018); beep(260, 0.12, 'sawtooth', 0.016, 0.08); },
+    error() { beep(220, 0.06, 'sawtooth', 0.02); beep(180, 0.08, 'sawtooth', 0.02, 0.05); },
+    start() { beep(460, 0.05, 'triangle', 0.018); beep(620, 0.05, 'triangle', 0.018, 0.06); beep(820, 0.08, 'triangle', 0.022, 0.12); },
+    lock() { beep(700, 0.03, 'square', 0.014); beep(540, 0.05, 'triangle', 0.012, 0.03); },
+    type() { beep(520 + Math.random() * 80, 0.018, 'square', 0.01); }
+  };
+  play[name]?.();
+}
+
 
 function show(id) {
   screens.forEach(s => el(s).classList.toggle('hidden', s !== id));
@@ -88,24 +139,35 @@ function mascotMarkup(type = 'blob') {
   const color = mascots[safe].color;
   return `<div class="mascot ${safe}" style="--m:${color}">
     <div class="mascot-shadow"></div>
+    <div class="mascot-backdrop"></div>
     <div class="mascot-arm left"></div><div class="mascot-arm right"></div>
     <div class="mascot-leg left"></div><div class="mascot-leg right"></div>
     <div class="mascot-body"></div>
+    <div class="mascot-hair"></div>
+    <div class="mascot-accessory"></div>
+    <div class="mascot-brow left"></div><div class="mascot-brow right"></div>
     <div class="mascot-eye left"></div><div class="mascot-eye right"></div>
+    <div class="mascot-cheek left"></div><div class="mascot-cheek right"></div>
     <div class="mascot-mouth"></div>
   </div>`;
 }
 
 function buildMascotPicker() {
+  const setDetails = () => {
+    el('selectedMascotName').textContent = mascots[state.mascot].name;
+    const blurb = el('selectedMascotBlurb');
+    if (blurb) blurb.textContent = mascots[state.mascot].blurb;
+  };
   el('mascotPicker').innerHTML = Object.entries(mascots).map(([id, m]) => `
     <button class="mascot-option ${id === state.mascot ? 'active' : ''}" data-mascot="${id}" aria-label="Choose ${m.name}">
       ${mascotMarkup(id)}<span class="pick-name">${m.name}</span>
     </button>`).join('');
-  el('selectedMascotName').textContent = mascots[state.mascot].name;
+  setDetails();
   el('mascotPicker').querySelectorAll('.mascot-option').forEach(btn => btn.onclick = () => {
     state.mascot = btn.dataset.mascot;
+    sfx('click');
     el('mascotPicker').querySelectorAll('.mascot-option').forEach(b => b.classList.toggle('active', b === btn));
-    el('selectedMascotName').textContent = mascots[state.mascot].name;
+    setDetails();
   });
 }
 
@@ -115,6 +177,17 @@ function toast(text) {
   t.textContent = text;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 1400);
+}
+
+function popAt(parent, x, y, className = 'hit-pop', text = '') {
+  if (!parent) return;
+  const p = document.createElement('span');
+  p.className = className;
+  if (text) p.textContent = text;
+  p.style.left = `${x}px`;
+  p.style.top = `${y}px`;
+  parent.appendChild(p);
+  setTimeout(() => p.remove(), 600);
 }
 
 function renderCoinStack(targetId, coins = 0) {
@@ -201,7 +274,10 @@ function rewardBurst(side, amount, winner = false) {
     setTimeout(() => c.remove(), 1200);
   }
   if (winner) confetti(holder);
-  if (amount > 0) say(side, `+${amount} COINS!`, 1650);
+  if (amount > 0) {
+    sfx('coin');
+    say(side, `+${amount} COINS!`, 1650);
+  }
 }
 
 function confetti(holder) {
@@ -274,6 +350,19 @@ function renderLobby(room) {
 }
 
 buildMascotPicker();
+const soundBtn = el('soundBtn');
+if (soundBtn) {
+  const refreshSoundButton = () => soundBtn.textContent = soundState.muted ? '🔇 SOUND OFF' : '🔊 SOUND ON';
+  refreshSoundButton();
+  soundBtn.onclick = () => {
+    initAudio();
+    soundState.muted = !soundState.muted;
+    refreshSoundButton();
+    if (!soundState.muted) sfx('success');
+  };
+}
+document.addEventListener('pointerdown', ensureAudio, { once: true });
+document.addEventListener('keydown', ensureAudio, { once: true });
 
 el('createBtn').onclick = () => {
   el('homeError').textContent = '';
@@ -298,6 +387,7 @@ el('readyBtn').onclick = () => socket.emit('setReady', { ready: !state.ready });
 el('leaveBtn').onclick = () => { socket.emit('leaveRoom'); location.reload(); };
 el('copyCode').onclick = async () => {
   await navigator.clipboard?.writeText(state.code);
+  sfx('click');
   toast('Room code copied');
 };
 el('rematchBtn').onclick = () => { show('lobby'); socket.emit('setReady', { ready: true }); };
@@ -311,6 +401,7 @@ socket.on('matchStart', data => {
   el('roundLabel').textContent = `ROUND 1/${data.totalRounds}`;
   reactMascot('me', 'hype', 'LET\'S GO!');
   reactMascot('rival', 'hype', 'BRING IT!');
+  sfx('start');
 });
 
 socket.on('roundIntro', data => {
@@ -369,12 +460,15 @@ socket.on('roundEnd', data => {
   if (data.tie) {
     reactMascot('me', 'panic', 'SO CLOSE!');
     reactMascot('rival', 'panic', 'NO WAY!');
+    sfx('lose');
   } else if (iWon) {
     reactMascot('me', strongPerformance(data.mode, mine.metric) ? 'hype' : 'win', strongPerformance(data.mode, mine.metric) ? 'CLEAN!' : 'YES!');
     reactMascot('rival', 'lose', 'OOF...');
+    sfx('win');
   } else {
     reactMascot('me', mine?.details?.falseStart || mine?.details?.falseStarts ? 'panic' : 'lose', 'NOOO!');
     reactMascot('rival', strongPerformance(data.mode, other.metric) ? 'hype' : 'win', strongPerformance(data.mode, other.metric) ? 'SHEESH!' : 'NICE!');
+    sfx('lose');
   }
   rewardBurst('me', myReward, iWon);
   rewardBurst('rival', otherReward, otherWon);
@@ -396,6 +490,7 @@ socket.on('matchEnd', data => {
   show('results');
   const winner = data.players.find(p => p.id === data.winnerId);
   el('winnerText').textContent = data.winnerId ? (data.winnerId === state.id ? 'YOU WIN!' : `${winner.name} WINS!`) : 'DRAW!';
+  if (data.winnerId === state.id) sfx('win'); else if (data.winnerId) sfx('lose'); else sfx('coin');
   el('finalMascots').innerHTML = data.players.map(p => `<div class="final-fighter ${p.id === data.winnerId ? 'winner' : ''}">${mascotMarkup(p.mascot)}<div class="final-name">${escapeHtml(p.name)}</div></div>`).join('');
   el('finalScore').innerHTML = data.players.map(p => `<div class="final-pill">${escapeHtml(p.name)}<strong>★ ${p.wins}</strong><small>${p.coins || 0} coins collected</small></div>`).join('');
 });
@@ -407,6 +502,7 @@ socket.on('opponentLeft', () => {
 
 function submit(metric, details = {}) {
   socket.emit('roundResult', { mode: state.mode, seed: state.seed, metric, details });
+  sfx('lock');
   reactMascot('me', 'wait');
   setStage(`<div class="center-copy"><div><div class="big-number good metric-lock">${formatMetric(state.mode, metric)}</div><div class="small-copy waiting-copy">Score locked in…</div></div></div>`);
 }
@@ -452,6 +548,7 @@ function playReaction(seed) {
       field.removeEventListener('pointerdown', onClick);
       const falseStart = !greenAt;
       const value = falseStart ? 1000 : performance.now() - greenAt;
+      sfx(falseStart ? 'error' : 'success');
       attempts.push(value);
       field.classList.remove('go');
       const big = field.querySelector('.big-number');
@@ -479,6 +576,7 @@ function playReaction(seed) {
       const big = field.querySelector('.big-number');
       big.textContent = 'CLICK!';
       big.classList.add('good');
+      sfx('reveal');
     }, delays[index]);
 
     state.cleanup = () => {
@@ -512,7 +610,8 @@ function playSequence(seed) {
 
   const flash = index => {
     tiles[index].classList.add('lit');
-    later(() => tiles[index].classList.remove('lit'), 260);
+    sfx('reveal');
+    later(() => tiles[index].classList.remove('lit'), 360);
   };
 
   const startLevel = () => {
@@ -522,8 +621,8 @@ function playSequence(seed) {
     accepting = false;
     inputIndex = 0;
     tiles.forEach(t => t.classList.remove('wrong', 'correct'));
-    sequence.forEach((tileIndex, i) => later(() => flash(tileIndex), 500 + i * 430));
-    later(() => { accepting = true; }, 500 + sequence.length * 430);
+    sequence.forEach((tileIndex, i) => later(() => flash(tileIndex), 850 + i * 620));
+    later(() => { accepting = true; }, 980 + sequence.length * 620);
   };
 
   const click = e => {
@@ -531,18 +630,21 @@ function playSequence(seed) {
     if (!btn || !accepting || done) return;
     const index = Number(btn.dataset.i);
     btn.classList.add('pressed');
-    later(() => btn.classList.remove('pressed'), 110);
+    sfx('click');
+    later(() => btn.classList.remove('pressed'), 130);
     if (index !== sequence[inputIndex]) {
       accepting = false;
       done = true;
       btn.classList.add('wrong');
-      later(() => submit(level - 1, { failedAt: level }), 350);
+      sfx('error');
+      later(() => submit(level - 1, { failedAt: level }), 500);
       return;
     }
     inputIndex++;
     if (inputIndex === sequence.length) {
       accepting = false;
       tiles.forEach(t => t.classList.add('correct'));
+      sfx('success');
       if (level >= maxLevel) {
         done = true;
         later(() => submit(level, { perfect: true }), 350);
@@ -554,7 +656,7 @@ function playSequence(seed) {
   };
 
   grid.addEventListener('pointerdown', click);
-  later(startLevel, 300);
+  later(startLevel, 600);
   state.cleanup = () => { timers.forEach(clearTimeout); grid.removeEventListener('pointerdown', click); };
 }
 
@@ -573,11 +675,16 @@ function playAim(seed) {
   };
   place();
 
-  const miss = e => { if (!done && e.target !== target) { misses++; el('aimMiss').textContent = `MISSES ${misses}`; } };
+  const miss = e => { if (!done && e.target !== target) { misses++; sfx('soft'); el('aimMiss').textContent = `MISSES ${misses}`; popAt(field, e.offsetX, e.offsetY, 'click-spark', '×'); } };
   const hit = e => {
     e.stopPropagation();
     if (done) return;
     const now = performance.now();
+    sfx('click');
+    sfx('target');
+    const rect = target.getBoundingClientRect();
+    const parentRect = field.getBoundingClientRect();
+    popAt(field, rect.left - parentRect.left + rect.width/2, rect.top - parentRect.top + rect.height/2, 'hit-pop');
     total += now - last;
     last = now;
     i++;
@@ -611,7 +718,8 @@ function playNumber(seed) {
     if (done) return;
     number = makeNumber(digits);
     setStage(`<div class="number-test"><div class="hud"><span>LEVEL ${digits}</span><span>${digits} DIGITS</span></div><div class="number-display">${number}</div><div class="small-copy">Memorize it…</div></div>`);
-    const displayMs = Math.min(3200, 900 + digits * 120);
+    const displayMs = Math.min(5200, 1600 + digits * 260);
+    sfx('reveal');
     timer = setTimeout(ask, displayMs);
     state.cleanup = () => clearTimeout(timer);
   };
@@ -625,6 +733,7 @@ function playNumber(seed) {
       e.preventDefault();
       if (done) return;
       if (input.value === number) {
+        sfx('success');
         if (digits >= maxDigits) {
           done = true;
           submit(digits, { perfect: true });
@@ -634,6 +743,7 @@ function playNumber(seed) {
         }
       } else {
         done = true;
+        sfx('error');
         submit(digits - 1, { failedAt: digits });
       }
     };
@@ -679,8 +789,8 @@ function playVerbal(seed) {
     const answer = saysSeen => {
       if (done) return;
       const correct = saysSeen === currentIsSeen;
-      if (correct) score++;
-      else lives--;
+      if (correct) { score++; sfx('click'); }
+      else { lives--; sfx('error'); }
       if (!seenSet.has(current)) {
         shown.push(current);
         seenSet.add(current);
@@ -738,16 +848,19 @@ function playChimp(seed) {
       const value = Number(btn.dataset.value);
       if (!hidden && value === 1) {
         hidden = true;
+        sfx('reveal');
         grid.querySelectorAll('.chimp-tile').forEach(t => { if (Number(t.dataset.value) !== 1) t.textContent = ''; });
       }
       if (value !== expected) {
         locked = true;
+        sfx('error');
         lives--;
         grid.classList.add('shake');
         transitionTimer = setTimeout(startAttempt, 450);
         return;
       }
       btn.classList.add('cleared');
+      sfx('click');
       btn.disabled = true;
       expected++;
       if (expected > count) {
@@ -755,6 +868,7 @@ function playChimp(seed) {
         best = count;
         if (count >= maxCount) {
           done = true;
+          sfx('success');
           transitionTimer = setTimeout(() => submit(best, { perfect: true, lives }), 350);
         } else {
           count++;
@@ -802,10 +916,11 @@ function playVisual(seed) {
     setStage(`<div class="visual-wrap"><div class="hud"><span>LEVEL ${level}</span><span>LIVES ${'●'.repeat(lives)}${'○'.repeat(3-lives)}</span></div><div class="visual-grid" id="visualGrid" style="--grid-size:${size}">${Array.from({length:total}, (_, i) => `<button class="visual-tile ${selected.has(i) ? 'lit' : ''}" data-i="${i}"></button>`).join('')}</div><div class="small-copy">Memorize the bright squares.</div></div>`);
 
     const grid = el('visualGrid');
+    sfx('reveal');
     revealTimer = setTimeout(() => {
       grid.querySelectorAll('.visual-tile').forEach(t => t.classList.remove('lit'));
       accepting = true;
-    }, 1150);
+    }, 1850 + Math.min(650, level * 35));
 
     const clicked = new Set();
     const onClick = e => {
@@ -817,17 +932,20 @@ function playVisual(seed) {
       if (!selected.has(i)) {
         accepting = false;
         lives--;
+        sfx('error');
         btn.classList.add('wrong');
         selected.forEach(idx => grid.querySelector(`[data-i="${idx}"]`)?.classList.add('missed'));
         transitionTimer = setTimeout(startAttempt, 600);
         return;
       }
       btn.classList.add('correct');
+      sfx('click');
       if ([...clicked].filter(idx => selected.has(idx)).length === selected.size) {
         accepting = false;
         best = level;
         if (level >= maxLevel) {
           done = true;
+          sfx('success');
           transitionTimer = setTimeout(() => submit(best, { perfect: true, lives }), 350);
         } else {
           level++;
@@ -856,6 +974,7 @@ function playTyping(seed) {
   let finished = false;
   let start = 0;
   let raf;
+  let lastTypeSound = 0;
 
   setStage(`<div class="typing-test"><div class="hud"><span id="typingStats">0.0 WPM · 100% ACC</span><span id="typingTime">25.0s</span></div><div class="typing-passage" id="typingPassage">${escapeHtml(text)}</div><textarea id="typingInput" class="typing-input" rows="5" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Start typing here…"></textarea></div>`);
   const input = el('typingInput');
@@ -896,6 +1015,8 @@ function playTyping(seed) {
 
   input.addEventListener('paste', e => e.preventDefault());
   input.addEventListener('input', () => {
+    const nowTime = performance.now();
+    if (nowTime - lastTypeSound > 35) { sfx('type'); lastTypeSound = nowTime; }
     if (!started) {
       started = true;
       start = performance.now();
@@ -922,6 +1043,7 @@ function playTracking(seed) {
   let raf;
 
   setStage(`<div class="playfield" id="trackField"><div class="hud"><span>KEEP CURSOR ON TARGET</span><span id="trackPct">0.0%</span></div><div class="track-target" id="trackTarget"></div></div>`);
+  sfx('reveal');
   const field = el('trackField');
   const target = el('trackTarget');
   const move = e => { pointer = { x: e.clientX, y: e.clientY }; };
@@ -956,6 +1078,12 @@ function playSwitch(seed) {
   const sequence = Array.from({ length: 16 }, () => keys[Math.floor(rand() * keys.length)]);
   let i = 0, errors = 0, total = 0, shownAt = performance.now(), done = false;
   setStage(`<div class="playfield"><div class="hud"><span id="keyProgress">KEY 1/16</span><span id="keyErrors">ERRORS 0</span></div><div class="center-copy"><div><div class="key-prompt" id="keyPrompt">${sequence[0]}</div><div class="small-copy">Use your keyboard</div></div></div></div>`);
+  const prompt = el('keyPrompt');
+  const flashPrompt = ok => {
+    prompt.classList.add('flash');
+    prompt.style.background = ok ? '' : '#6b313b';
+    setTimeout(() => { prompt.classList.remove('flash'); prompt.style.background = ''; }, 90);
+  };
   const handler = e => {
     if (done || e.repeat) return;
     const k = e.key.toUpperCase();
@@ -963,10 +1091,14 @@ function playSwitch(seed) {
     e.preventDefault();
     if (k !== sequence[i]) {
       errors++;
+      sfx('error');
+      flashPrompt(false);
       el('keyErrors').textContent = `ERRORS ${errors}`;
       return;
     }
     const now = performance.now();
+    sfx('click');
+    flashPrompt(true);
     total += now - shownAt;
     i++;
     if (i >= sequence.length) {
@@ -976,7 +1108,7 @@ function playSwitch(seed) {
       return;
     }
     el('keyProgress').textContent = `KEY ${i + 1}/16`;
-    el('keyPrompt').textContent = sequence[i];
+    prompt.textContent = sequence[i];
     shownAt = performance.now();
   };
   window.addEventListener('keydown', handler);
@@ -989,13 +1121,18 @@ function playBurst() {
   setStage(`<div class="playfield"><div class="hud"><span>5 SECOND BURST</span><span id="burstTime">5.00s</span></div><div class="center-copy"><div class="click-zone" id="clickZone"><div><div class="click-count" id="clickCount">0</div><div class="small-copy">CLICK TO START</div></div></div></div></div>`);
   const zone = el('clickZone');
   const count = el('clickCount');
-  const click = () => {
+  const click = e => {
+    const nowTime = performance.now();
+    if (nowTime - lastTypeSound > 35) { sfx('type'); lastTypeSound = nowTime; }
     if (!started) {
       started = true;
       start = performance.now();
       timer = requestAnimationFrame(tick);
     }
     clicks++;
+    if (clicks < 4 || clicks % 2 === 0) sfx('soft');
+    const r = zone.getBoundingClientRect();
+    popAt(zone, (e?.clientX || (r.left + r.width/2)) - r.left, (e?.clientY || (r.top + r.height/2)) - r.top, 'click-spark', '+1');
     count.textContent = clicks;
   };
   const tick = now => {
