@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DUEL//BENCH — 1v1 Gamer Skillcheck</title>
+  <meta name="description" content="Challenge a friend to an 11-test 1v1 gamer benchmark: reaction, aim, memory, typing, tracking and more." />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">DUEL<span>//</span>BENCH</div>
+      <div class="tag">1v1 GAMER SKILLCHECK</div>
+    </header>
+
+    <section id="home" class="panel hero">
+      <p class="eyebrow">REACTION · AIM · MEMORY · TYPING · TRACKING · SPEED</p>
+      <h1>Eleven tests. <span>One winner.</span></h1>
+      <p class="sub">A real-time 1v1 benchmark for friends. Same challenges, same seeds, instant round results.</p>
+
+      <div class="feature-row" aria-label="available match formats">
+        <span>ULTIMATE 11</span><span>HUMAN 8</span><span>GAMER 5</span>
+      </div>
+
+      <div class="card-grid">
+        <div class="join-card">
+          <label>Your name</label>
+          <input id="nameInput" maxlength="18" placeholder="Player" autocomplete="off" />
+          <button id="createBtn" class="primary">CREATE ROOM</button>
+        </div>
+        <div class="join-card">
+          <label>Room code</label>
+          <input id="codeInput" maxlength="5" placeholder="ABCDE" autocomplete="off" />
+          <button id="joinBtn">JOIN DUEL</button>
+        </div>
+      </div>
+      <p id="homeError" class="error"></p>
+    </section>
+
+    <section id="lobby" class="panel hidden">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">PRIVATE DUEL</p>
+          <h2>Room <button id="copyCode" class="code-btn">-----</button></h2>
+        </div>
+        <button id="leaveBtn" class="ghost">LEAVE</button>
+      </div>
+
+      <div class="preset-box">
+        <div class="preset-top">
+          <div>
+            <label>Match format</label>
+            <strong id="presetLabel">ULTIMATE 11 · 11 ROUNDS</strong>
+          </div>
+          <div class="preset-buttons">
+            <button class="preset-btn active" data-preset="full">ULTIMATE 11</button>
+            <button class="preset-btn" data-preset="human">HUMAN 8</button>
+            <button class="preset-btn" data-preset="gamer">GAMER 5</button>
+          </div>
+        </div>
+        <p id="presetHint" class="hint left-hint">Choose the match format.</p>
+      </div>
+
+      <div id="players" class="players"></div>
+      <button id="readyBtn" class="primary wide">READY UP</button>
+      <p class="hint">Both players ready = the duel starts automatically.</p>
+    </section>
+
+    <section id="game" class="panel game-panel hidden">
+      <div class="scorebar">
+        <div id="scoreP1" class="score-player">P1 <b>0</b></div>
+        <div id="roundLabel" class="round-label">ROUND 1/11</div>
+        <div id="scoreP2" class="score-player right">P2 <b>0</b></div>
+      </div>
+      <div id="gameStage" class="stage"></div>
+    </section>
+
+    <section id="results" class="panel hidden result-panel">
+      <p class="eyebrow">MATCH COMPLETE</p>
+      <h2 id="winnerText">Winner</h2>
+      <div id="finalScore" class="final-score"></div>
+      <button id="rematchBtn" class="primary wide">REMATCH</button>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/game.js"></script>
+</body>
+</html>
