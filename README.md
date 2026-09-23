@@ -18,13 +18,13 @@ A real-time 1v1 browser game where two friends compete in gamer/human benchmark 
 
 ## Game modes
 
-### ULTIMATE 11
+### ULTIMATE 10
 Reaction Time, Sequence Memory, Aim Trainer, Number Memory, Verbal Memory, Chimp Test, Visual Memory, Typing, Tracking, WASD Reflex, Click Burst.
 
 ### HUMAN 8
 Reaction Time, Sequence Memory, Aim Trainer, Number Memory, Verbal Memory, Chimp Test, Visual Memory, Typing.
 
-### GAMER 5
+### GAMER 4
 Reaction Time, Aim Trainer, Tracking, WASD Reflex, Click Burst.
 
 ## Run locally
@@ -64,3 +64,10 @@ For a new Render service:
 ## Important multiplayer note
 
 Rooms are stored in server memory. This is perfect for the current two-player prototype. If the Render service restarts, active room codes disappear. A database is only needed later if you want persistent profiles, cosmetics, leaderboards or matchmaking.
+
+
+## v5 changes
+- Removed WASD Reflex.
+- Fixed Click Burst and added live CPS feedback.
+- Added an original looping arcade soundtrack.
+- Current round-score leader gets an animated fire aura.

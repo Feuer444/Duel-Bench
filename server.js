@@ -10,18 +10,17 @@ const io = new Server(server, { pingTimeout: 20000, pingInterval: 10000 });
 const PORT = process.env.PORT || 3000;
 
 const PRESETS = {
-  full: ['reaction', 'sequence', 'aim', 'number', 'verbal', 'chimp', 'visual', 'typing', 'tracking', 'switch', 'burst'],
+  full: ['reaction', 'sequence', 'aim', 'number', 'verbal', 'chimp', 'visual', 'typing', 'tracking', 'burst'],
   human: ['reaction', 'sequence', 'aim', 'number', 'verbal', 'chimp', 'visual', 'typing'],
-  gamer: ['reaction', 'aim', 'tracking', 'switch', 'burst']
+  gamer: ['reaction', 'aim', 'tracking', 'burst']
 };
 
-const LOWER_WINS = new Set(['reaction', 'aim', 'switch']);
+const LOWER_WINS = new Set(['reaction', 'aim']);
 const MASCOTS = new Set(['blob', 'bean', 'boxy', 'puff', 'starlet', 'bot']);
 const METRIC_BOUNDS = {
   reaction: [70, 1500],
   aim: [70, 4000],
   tracking: [0, 100],
-  switch: [70, 4000],
   burst: [0, 40],
   sequence: [0, 30],
   number: [0, 30],
@@ -35,7 +34,6 @@ const ROUND_TIMEOUT_MS = {
   reaction: 42000,
   aim: 45000,
   tracking: 14000,
-  switch: 35000,
   burst: 11000,
   sequence: 100000,
   number: 105000,
@@ -107,7 +105,6 @@ function roundWinner(mode, results) {
   const tieThreshold = {
     reaction: 1,
     aim: 1,
-    switch: 1,
     tracking: 0.25,
     burst: 0.05,
     typing: 0.1

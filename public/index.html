@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Duel Bench — Party Skill Battle</title>
-  <meta name="description" content="Challenge a friend to an 11-test 1v1 gamer benchmark with mascots, coins and party-game reactions." />
+  <meta name="description" content="Challenge a friend to an 10-test 1v1 gamer benchmark with mascots, coins and party-game reactions." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet" />
@@ -35,7 +35,7 @@
       <p class="sub">Reaction, aim, memory, typing and gamer mechanics — wrapped in a tiny competitive party game.</p>
 
       <div class="feature-row" aria-label="available match formats">
-        <span>ULTIMATE 11</span><span>HUMAN 8</span><span>GAMER 5</span>
+        <span>ULTIMATE 10</span><span>HUMAN 8</span><span>GAMER 4</span>
       </div>
 
       <div class="fighter-select">
@@ -78,12 +78,12 @@
         <div class="preset-top">
           <div>
             <label>Match format</label>
-            <strong id="presetLabel">ULTIMATE 11 · 11 ROUNDS</strong>
+            <strong id="presetLabel">ULTIMATE 10 · 10 ROUNDS</strong>
           </div>
           <div class="preset-buttons">
-            <button class="preset-btn active" data-preset="full">ULTIMATE 11</button>
+            <button class="preset-btn active" data-preset="full">ULTIMATE 10</button>
             <button class="preset-btn" data-preset="human">HUMAN 8</button>
-            <button class="preset-btn" data-preset="gamer">GAMER 5</button>
+            <button class="preset-btn" data-preset="gamer">GAMER 4</button>
           </div>
         </div>
         <p id="presetHint" class="hint left-hint">Choose the match format.</p>
@@ -141,6 +141,7 @@
     </section>
   </main>
 
+  <audio id="soundtrack" src="/soundtrack.wav" loop preload="auto"></audio>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/game.js"></script>
 </body>
